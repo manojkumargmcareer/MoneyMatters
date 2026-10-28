@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Offline-first personal finance tracker">
+  <title>MoneyMatters v1.1 — Personal Finance</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">₹</div><div><strong>MoneyMatters</strong><small>Your money. Your data. · v1.1</small></div></div>
+    <div class="top-actions"><span id="offlineBadge" class="pill">Local-first</span><button id="lockBtn" class="secondary">App lock</button><button id="quickAddBtn" class="primary">+ Add transaction</button></div>
+  </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="side-label">WORKSPACE</div>
+      <button class="nav active" data-view="dashboard"><span class="nav-icon" aria-hidden="true">🏠</span><span>Home</span></button>
+      <button class="nav" data-view="transactions"><span class="nav-icon" aria-hidden="true">🧾</span><span>Transactions</span></button>
+      <button class="nav" data-view="budgets"><span class="nav-icon" aria-hidden="true">🎯</span><span>Budgets</span></button>
+      <button class="nav" data-view="goals"><span class="nav-icon" aria-hidden="true">🐷</span><span>Savings goals</span></button>
+      <button class="nav" data-view="investments"><span class="nav-icon" aria-hidden="true">📈</span><span>Investments</span></button>
+      <button class="nav" data-view="trading"><span class="nav-icon" aria-hidden="true">📊</span><span>Swing trades</span></button>
+      <button class="nav" data-view="bills"><span class="nav-icon" aria-hidden="true">🗓️</span><span>Bills</span></button>
+      <div class="side-label lower">YOUR DATA</div>
+      <button class="nav" data-view="reports"><span class="nav-icon" aria-hidden="true">📉</span><span>Reports</span></button>
+      <button class="nav" data-view="backup"><span class="nav-icon" aria-hidden="true">🔐</span><span>Backup</span></button>
+      <div class="sidebar-note"><span class="dot"></span><div><strong>Stored on this device</strong><small>No account or cloud required</small></div></div>
+    </aside>
+    <main id="main" class="main">
+      <div class="loading">Loading your finance workspace…</div>
+    </main>
+  </div>
+  <dialog id="transactionDialog">
+    <form id="transactionForm" method="dialog" class="dialog-form">
+      <div class="dialog-head"><div><h2>Add transaction</h2><p>Record an income or expense.</p></div><button type="button" class="icon-btn" id="closeDialog" aria-label="Close">✕</button></div>
+      <div class="field"><label for="txType">Type</label><select id="txType" required><option value="expense">Expense</option><option value="income">Income</option></select></div>
+      <div class="form-grid">
+        <div class="field"><label for="txAmount">Amount (₹)</label><input id="txAmount" type="number" min="0.01" step="0.01" required placeholder="0.00"></div>
+        <div class="field"><label for="txDate">Date</label><input id="txDate" type="date" required></div>
+      </div>
+      <div class="field"><label for="txCategory">Category</label><select id="txCategory" required></select></div><div class="field" id="customCategoryWrap" hidden><label for="txCustomCategory">Specify category</label><input id="txCustomCategory" maxlength="80" placeholder="Enter the category name"></div>
+      <div class="field"><label for="txNote">Note (optional)</label><input id="txNote" maxlength="240" placeholder="What was this for?"></div>
+      <div class="dialog-actions"><button type="button" class="secondary" id="cancelDialog">Cancel</button><button class="primary" type="submit">Save transaction</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <div id="lockOverlay" class="lock-overlay" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
