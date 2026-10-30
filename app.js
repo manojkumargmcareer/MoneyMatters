@@ -519,7 +519,7 @@
   window.addEventListener("offline",()=>$("#offlineBadge").textContent="Offline mode");
   async function init(){
     initializeLockGate();
-    try{db=await openDB();await seed();await render();if("serviceWorker" in navigator && location.protocol!=="file:")navigator.serviceWorker.register("./sw.js").catch(()=>{});}
+    try{db=await openDB();await seed();await render();if("serviceWorker" in navigator && location.protocol!=="file:")navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});}
     catch(e){$("#main").innerHTML=`<div class="panel"><h2>Unable to open local database</h2><p>${esc(e.message)}</p><p>Try opening this app through localhost or a supported browser.</p></div>`;}
   }
   init();
