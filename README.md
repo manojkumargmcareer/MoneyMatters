@@ -103,3 +103,9 @@ The trading journal is stored in the same local browser database as other MoneyM
 - Improved responsive spacing, two-column monthly summary cards, and larger income/expense icons.
 - Added clear icons to each navigation section and better touch targets for small screens.
 - Bumped service-worker cache version so the new UI files can be fetched after deployment.
+
+
+## Editing records
+- Transactions can be edited from the Transactions list using the Edit action. The original record ID is retained so backups and imports continue to match it.
+- Investment holdings can be edited using Edit details, including the investment name, initial invested amount, and current value. The quick current-value update remains available.
+- Export a backup before making bulk changes or deploying an update.
