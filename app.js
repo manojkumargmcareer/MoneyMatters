@@ -11,7 +11,7 @@
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const money = n => new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:2}).format(Number(n||0));
   const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  let db, activeView = "dashboard", toastTimer;
+  let db, activeView = "dashboard", toastTimer, editingTransactionId = null;
   const LOCK_KEY = "paisaos_app_lock_v1";
   const SKIP_LOCK_KEY = "paisaos_app_lock_skipped_v1";
   let lockMode = "";
@@ -173,7 +173,7 @@
   }
   function txTable(txs, limit=100) {
     if(!txs.length) return `<div class="empty"><strong>No transactions yet</strong>Add your first income or expense to start tracking your money.</div>`;
-    return `<div class="table-wrap"><table class="data-table"><thead><tr><th>DATE</th><th>DESCRIPTION</th><th>TYPE</th><th style="text-align:right">AMOUNT</th><th></th></tr></thead><tbody>${txs.slice(0,limit).map(t=>`<tr><td>${dateLabel(t.date)}</td><td><strong>${esc(t.category||"Other")}</strong><div class="muted small">${esc(t.note||"")}</div></td><td><span class="tag">${esc(t.type)}</span></td><td style="text-align:right" class="amount ${t.type}">${t.type==="expense"?"−":t.type==="income"?"+":""}${money(t.amount)}</td><td><button class="text-btn" data-delete-tx="${t.id}" title="Delete transaction">Delete</button></td></tr>`).join("")}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr><th>DATE</th><th>DESCRIPTION</th><th>TYPE</th><th style="text-align:right">AMOUNT</th><th></th></tr></thead><tbody>${txs.slice(0,limit).map(t=>`<tr><td>${dateLabel(t.date)}</td><td><strong>${esc(t.category||"Other")}</strong><div class="muted small">${esc(t.note||"")}</div></td><td><span class="tag">${esc(t.type)}</span></td><td style="text-align:right" class="amount ${t.type}">${t.type==="expense"?"−":t.type==="income"?"+":""}${money(t.amount)}</td><td><div class="row-actions"><button class="text-btn" data-edit-tx="${t.id}" title="Edit transaction">Edit</button><button class="text-btn" data-delete-tx="${t.id}" title="Delete transaction">Delete</button></div></td></tr>`).join("")}</tbody></table></div>`;
   }
   function tradeDuration(start, end) {
     if (!start) return "—";
@@ -219,7 +219,7 @@
       html=head("Investments","Manually record holdings and their latest estimated values.")+
       `<form id="investmentForm" class="inline-form"><div class="field"><label>Investment name</label><input name="name" required placeholder="Index mutual fund"></div><div class="field"><label>Invested amount (₹)</label><input name="invested" type="number" min="0" step=".01" required placeholder="10000"></div><div class="field"><label>Current value (₹)</label><input name="currentValue" type="number" min="0" step=".01" required placeholder="10500"></div><button class="primary">Add holding</button></form>`+
       `<div class="stats">${stat("INVESTED",money(investments.reduce((s,i)=>s+Number(i.invested),0)),"Recorded cost","↗")}${stat("CURRENT VALUE",money(investments.reduce((s,i)=>s+Number(i.currentValue),0)),"Manually updated","◈")}${stat("GAIN / LOSS",money(investments.reduce((s,i)=>s+Number(i.currentValue)-Number(i.invested),0)),"Not a live market quote","±","")}${stat("HOLDINGS",String(investments.length),"Manual portfolio records","▤")}</div>`+
-      `<div class="cards-grid">${investments.length?investments.map(i=>{const diff=Number(i.currentValue)-Number(i.invested);return `<div class="card"><div class="card-top"><span class="tag">Holding</span><button class="text-btn" data-delete-investment="${i.id}">Delete</button></div><h2>${esc(i.name)}</h2><div class="card-value">${money(i.currentValue)}</div><p class="muted small">Invested ${money(i.invested)}</p><p class="small ${diff>=0?"positive":"negative"}">${diff>=0?"+":""}${money(diff)} (${Number(i.invested)?(diff/Number(i.invested)*100).toFixed(2):"0.00"}%)</p><form class="investment-update" data-investment-id="${i.id}"><div class="field"><label>Update current value (₹)</label><input type="number" min="0" step=".01" name="currentValue" value="${Number(i.currentValue)}" required></div><button class="secondary">Update value</button></form></div>`}).join(""):`<div class="card empty"><strong>No holdings recorded</strong>Add a holding above. Values are manual; no broker connection is used.</div>`}</div><div class="notice">This is a personal record-keeping tool, not investment advice. Prices and values are not fetched automatically.</div>`;
+      `<div class="cards-grid">${investments.length?investments.map(i=>{const diff=Number(i.currentValue)-Number(i.invested);return `<div class="card"><div class="card-top"><span class="tag">Holding</span><div class="row-actions"><button class="text-btn" type="button" data-edit-investment="${i.id}">Edit details</button><button class="text-btn" data-delete-investment="${i.id}">Delete</button></div></div><h2>${esc(i.name)}</h2><div class="card-value">${money(i.currentValue)}</div><p class="muted small">Invested ${money(i.invested)}</p><p class="small ${diff>=0?"positive":"negative"}">${diff>=0?"+":""}${money(diff)} (${Number(i.invested)?(diff/Number(i.invested)*100).toFixed(2):"0.00"}%)</p><form class="investment-edit" data-investment-edit-form="${i.id}" hidden><div class="field"><label>Investment name</label><input name="name" value="${esc(i.name)}" required maxlength="100"></div><div class="field"><label>Initial invested amount (₹)</label><input type="number" min="0" step=".01" name="invested" value="${Number(i.invested)}" required></div><div class="field"><label>Current value (₹)</label><input type="number" min="0" step=".01" name="currentValue" value="${Number(i.currentValue)}" required></div><div class="row-actions"><button class="primary" type="submit">Save changes</button><button class="secondary" type="button" data-cancel-investment-edit="${i.id}">Cancel</button></div></form><form class="investment-update" data-investment-id="${i.id}"><div class="field"><label>Quick update current value (₹)</label><input type="number" min="0" step=".01" name="currentValue" value="${Number(i.currentValue)}" required></div><button class="secondary">Update value</button></form></div>`}).join(""):`<div class="card empty"><strong>No holdings recorded</strong>Add a holding above. Values are manual; no broker connection is used.</div>`}</div><div class="notice">This is a personal record-keeping tool, not investment advice. Prices and values are not fetched automatically.</div>`;
     } else if(activeView==="trading") {
       const trades=await all("tradeJournal");
       const closed=trades.filter(t=>t.exitPrice!==null&&t.exitPrice!==undefined&&t.exitPrice!==""&&Number(t.exitPrice)>0);
@@ -294,9 +294,25 @@
     $("#customCategoryWrap").hidden=select.value!=="Others (Need To Specify)";
     $("#txCustomCategory").required=select.value==="Others (Need To Specify)";
   }
-  async function showTransactionDialog() {
+  async function showTransactionDialog(transactionId=null) {
+    editingTransactionId=transactionId;
+    const form=$("#transactionForm");
+    form.reset();
     $("#txDate").value=todayISO();$("#txAmount").value="";$("#txNote").value="";$("#txCustomCategory").value="";
     $("#txType").value="expense";populateCategoryOptions("expense");
+    const record=transactionId?(await all("transactions")).find(t=>t.id===transactionId):null;
+    if(record){
+      $("#txType").value=record.type;populateCategoryOptions(record.type);
+      const categories=[...$("#txCategory").options].map(o=>o.value);
+      if(categories.includes(record.category)){ $("#txCategory").value=record.category; }
+      else { $("#txCategory").value="Others (Need To Specify)";$("#txCustomCategory").value=record.category||""; }
+      $("#txAmount").value=Number(record.amount);$("#txDate").value=record.date||todayISO();$("#txNote").value=record.note||"";
+      $("#customCategoryWrap").hidden=$("#txCategory").value!=="Others (Need To Specify)";
+      $("#txCustomCategory").required=!$("#customCategoryWrap").hidden;
+    }
+    $("#transactionDialog h2").textContent=record?"Edit transaction":"Add transaction";
+    $("#transactionDialog .dialog-head p").textContent=record?"Update the details of this transaction.":"Record an income or expense.";
+    $("#transactionForm button[type=submit]").textContent=record?"Save changes":"Save transaction";
     $("#transactionDialog").showModal();
   }
   function bindViewEvents() {
@@ -306,9 +322,13 @@
     $("#txFilterType")?.addEventListener("change",e=>{filters.type=e.target.value;render();});
     $("#txFilterMonth")?.addEventListener("change",e=>{filters.month=e.target.value;render();});
     $("#clearTxFilters")?.addEventListener("click",()=>{filters={search:"",type:"all",month:""};render();});
-    $$("[data-delete-tx]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this transaction? This cannot be undone unless you have a backup.")){await remove("transactions",b.dataset.deleteTx);notify("Transaction deleted");render();}}));
+    $$ ("[data-edit-tx]").forEach(b=>b.addEventListener("click",()=>showTransactionDialog(b.dataset.editTx)));
+    $$ ("[data-delete-tx]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this transaction? This cannot be undone unless you have a backup.")){await remove("transactions",b.dataset.deleteTx);notify("Transaction deleted");render();}}));
     $$("[data-delete-budget]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this budget?")){await remove("budgets",b.dataset.deleteBudget);render();}}));
     $$("[data-delete-goal]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this goal?")){await remove("goals",b.dataset.deleteGoal);render();}}));
+    $$("[data-edit-investment]").forEach(b=>b.addEventListener("click",()=>{const form=$(`[data-investment-edit-form="${b.dataset.editInvestment}"]`);if(form)form.hidden=false;}));
+    $$("[data-cancel-investment-edit]").forEach(b=>b.addEventListener("click",()=>{const form=$(`[data-investment-edit-form="${b.dataset.cancelInvestmentEdit}"]`);if(form)form.hidden=true;}));
+    $$(".investment-edit").forEach(form=>form.addEventListener("submit",async e=>{e.preventDefault();const item=(await all("investments")).find(i=>i.id===form.dataset.investmentEditForm);if(!item)return;const f=new FormData(form),name=String(f.get("name")).trim(),invested=Number(f.get("invested")),currentValue=Number(f.get("currentValue"));if(!name||!Number.isFinite(invested)||invested<0||!Number.isFinite(currentValue)||currentValue<0){notify("Enter valid investment details");return;}item.name=name;item.invested=invested;item.currentValue=currentValue;item.updatedAt=new Date().toISOString();await put("investments",item);notify("Investment details updated");render();}));
     $$("[data-delete-investment]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this holding?")){await remove("investments",b.dataset.deleteInvestment);render();}}));
     $$('[data-set-exit]').forEach(b=>b.addEventListener("click",async()=>{const trade=(await all("tradeJournal")).find(t=>t.id===b.dataset.setExit);if(!trade)return;const raw=prompt(`Enter exit price for ${trade.symbol} (₹):`);if(raw===null)return;const exitPrice=Number(raw.trim());if(!Number.isFinite(exitPrice)||exitPrice<=0){notify("Enter a valid exit price greater than zero");return;}trade.exitPrice=exitPrice;trade.exitDate=todayISO();trade.status="Closed";await put("tradeJournal",trade);notify("Exit price saved; P/L updated");render();}));
     $$("[data-delete-trade]").forEach(b=>b.addEventListener("click",async()=>{if(confirm("Delete this trade journal entry? This cannot be undone unless you have a backup.")){await remove("tradeJournal",b.dataset.deleteTrade);render();}}));
@@ -495,8 +515,8 @@
   function navigate(view) { activeView=view; $$(".nav").forEach(n=>n.classList.toggle("active",n.dataset.view===view)); if(window.matchMedia("(max-width: 700px)").matches){$(".sidebar")?.classList.add("mobile-collapsed");$("#menuToggle")?.setAttribute("aria-expanded","false");} render(); }
   $("#quickAddBtn").addEventListener("click",showTransactionDialog);
   $("#lockBtn").addEventListener("click",()=>{if(localStorage.getItem(LOCK_KEY))showLockGate("unlock");else navigate("backup");});
-  $("#closeDialog").addEventListener("click",()=>$("#transactionDialog").close());
-  $("#cancelDialog").addEventListener("click",()=>$("#transactionDialog").close());
+  $("#closeDialog").addEventListener("click",()=>{editingTransactionId=null;$("#transactionDialog").close();});
+  $("#cancelDialog").addEventListener("click",()=>{editingTransactionId=null;$("#transactionDialog").close();});
   $("#txType").addEventListener("change",e=>populateCategoryOptions(e.target.value));
   $("#txCategory").addEventListener("change",()=>{const custom=$("#txCategory").value==="Others (Need To Specify)";$("#customCategoryWrap").hidden=!custom;$("#txCustomCategory").required=custom;if(custom)$("#txCustomCategory").focus();});
   $("#transactionForm").addEventListener("submit",async e=>{
@@ -507,8 +527,9 @@
     const selectedCategory=$("#txCategory").value;
     const customCategory=$("#txCustomCategory").value.trim();
     if(selectedCategory==="Others (Need To Specify)"&&!customCategory){notify("Please specify the category");return;}
-    const t={id:uid(),type,amount,date:$("#txDate").value,category:selectedCategory==="Others (Need To Specify)"?customCategory:selectedCategory,categoryGroup:selectedCategory==="Others (Need To Specify)"?selectedCategory:selectedCategory,accountId:null,toAccountId:null,note:$("#txNote").value.trim(),createdAt:new Date().toISOString()};
-    await put("transactions",t);$("#transactionDialog").close();notify("Transaction saved");render();
+    const existing=editingTransactionId?(await all("transactions")).find(x=>x.id===editingTransactionId):null;
+    const t={...(existing||{}),id:existing?.id||uid(),type,amount,date:$("#txDate").value,category:selectedCategory==="Others (Need To Specify)"?customCategory:selectedCategory,categoryGroup:selectedCategory==="Others (Need To Specify)"?selectedCategory:selectedCategory,accountId:null,toAccountId:null,note:$("#txNote").value.trim(),createdAt:existing?.createdAt||new Date().toISOString(),updatedAt:new Date().toISOString()};
+    await put("transactions",t);editingTransactionId=null;$("#transactionDialog").close();notify(existing?"Transaction updated":"Transaction saved");render();
   });
   $$(".nav").forEach(n=>n.addEventListener("click",()=>navigate(n.dataset.view)));
   const menuToggle=$("#menuToggle");
