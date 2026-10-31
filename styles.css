@@ -136,3 +136,9 @@
   .sidebar:not(.mobile-collapsed){display:flex;position:absolute;top:65px;left:0;width:min(290px,84vw);max-height:calc(100dvh - 65px);overflow-y:auto;box-shadow:0 16px 35px #11182724;border:1px solid var(--line);border-left:0;border-radius:0 0 16px 0;z-index:10;}
   .main{padding-top:15px;}
 }
+
+/* Compact action controls used by transaction and investment editing. */
+.row-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.row-actions .text-btn{white-space:nowrap}
+.investment-edit{margin:12px 0;padding:12px;background:#f8f9fd;border:1px solid var(--line);border-radius:10px}
+.investment-edit[hidden]{display:none!important}
