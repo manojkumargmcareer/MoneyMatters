@@ -1,4 +1,4 @@
-const CACHE = "moneymatters-shell-v16";
+const CACHE = "moneymatters-shell-v17";
 const ASSETS = ["./", "./index.html", "./styles.css", "./app.js", "./manifest.webmanifest", "./icons/paisaos-192.png", "./icons/paisaos-512.png"];
 
 self.addEventListener("install", event => {
